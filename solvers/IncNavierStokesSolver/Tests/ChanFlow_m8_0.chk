@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<NEKTAR>
+    <Metadata>
+        <Provenance>
+            <GitBranch>refs/heads/fsi_stability</GitBranch>
+            <GitSHA1>209ac3c5fb476255557eb5a14a9340aee4753743</GitSHA1>
+            <Hostname>daiane</Hostname>
+            <NektarVersion>5.0.0</NektarVersion>
+            <Timestamp>18-Sep-2020 17:34:29</Timestamp>
+        </Provenance>
+        <ChkFileNum>0</ChkFileNum>
+        <Kinvis>1</Kinvis>
+        <SessionName0>ChanFlow_m8.xml</SessionName0>
+        <Time>0</Time>
+        <TimeStep>0.001</TimeStep>
+    </Metadata>
+    <ELEMENTS FIELDS="u,v,p" SHAPE="Quadrilateral" BASIS="Modified_A,Modified_A" NUMMODESPERDIR="UNIORDER:8,8" ID="0-3" COMPRESSED="B64Z-LittleEndian" BITSIZE="64">eJztwQENAAAAwqD3T20PBxQAAAAAAPBmGAAAAQAA</ELEMENTS>
+</NEKTAR>
