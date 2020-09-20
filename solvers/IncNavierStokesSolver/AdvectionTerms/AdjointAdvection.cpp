@@ -113,7 +113,19 @@ void AdjointAdvection::v_Advect(
             string file = m_session->GetFunctionFilename("BaseFlow", 0);
             int step = time/m_session->GetParameter("TimeStep");
             int adj_step = m_slices - step;
-            ImportFldBase(file,fields,adj_step);
+            
+            size_t found = file.find("%d");
+            ASSERTL0(found != string::npos && file.find("%d", found+1) == string::npos,
+                    "Since N_slices is specified, the filename provided for function "
+                    "'BaseFlow' must include exactly one instance of the format "
+                    "specifier '%d', to index the time-slices.");
+            char* buffer = new char[file.length() + 8];
+
+           
+            sprintf(buffer, file.c_str(), adj_step);
+            ImportFldBase(buffer,fields,1);
+            
+            delete[] buffer;
         }
 
         for (int i = 0; i < ndim; ++i)

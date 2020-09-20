@@ -178,8 +178,7 @@ void LinearisedAdvection::v_InitObject(
            
         if(m_slices>1)
         {
-        
-            std::string bf_form = m_session->GetSolverInfo("Baseflowform");
+
 
             if (m_session->GetSolverInfo("BaseFlowform") == "Periodic")
             {
@@ -416,7 +415,7 @@ void LinearisedAdvection::ImportFldBase(
 
     int nqtot = m_baseflow[0].size();
     Array<OneD, NekDouble> tmp_coeff(pFields[0]->GetNcoeffs(), 0.0);
-
+    
     int numexp = pFields[0]->GetExpSize();
     Array<OneD,int> ElementGIDs(numexp);
 
@@ -442,9 +441,11 @@ void LinearisedAdvection::ImportFldBase(
         ASSERTL0(nFileVar == 3, "For half mode, expect 2D2C base flow.");
         nFileConvVar = 2;
     }
+    
 
     for(int j = 0; j < nFileConvVar; ++j)
     {
+        
         for(int i = 0; i < FieldDef.size(); ++i)
         {
             bool flag = FieldDef[i]->m_fields[j] ==
@@ -489,7 +490,7 @@ void LinearisedAdvection::ImportFldBase(
     }
 
     // If time-periodic, put loaded data into the slice storage.
-    if(m_session->DefinesParameter("N_slices"))
+    if(m_session->DefinesParameter("N_slices") && m_session->GetSolverInfo("BaseFlowform") == "Periodic")
     {
         for(int i = 0; i < nSessionConvVar; ++i)
         {
