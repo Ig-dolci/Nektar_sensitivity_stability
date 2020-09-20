@@ -6,7 +6,7 @@ Nektar ++ is an open-source software framework designed to support the
 development of high-performance scalable solvers for partial differential
 equations (PDEs) using the spectral/hp element method.
 
-The original software and User Guide is available for download from
+The original software and User Guide are available for download from
 <http://www.nektar.info/>.
 
 
