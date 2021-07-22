@@ -13,35 +13,29 @@
           <I PROPERTY="Projection" VALUE="Galerkin" />
           <I PROPERTY="TimeIntegrationMethod" VALUE="IMEXOrder2" />
           <I PROPERTY="VibrationType" VALUE="Constrained"/>
-         <!-- <I PROPERTY="FictitiousMassMethod" VALUE="True"/>-->
           <I PROPERTY="Driver" VALUE="Arpack" />
-          <!-- <I PROPERTY="Control" VALUE="DeActivate" />  -->
           <I PROPERTY="ODESolver" VALUE="Newmark" />
         </SOLVERINFO>
 
     <PARAMETERS>
         <P> TimeStep = 0.003                              </P>
-        <P> TimeSimul = 3                                  </P>
-        <P> NumSteps = TimeSimul/TimeStep                         </P>
-        <P> IO_CheckSteps = NumSteps+1                      </P>
-        <P> IO_InfoSteps = 10000                            </P>
+        <P> TimeSimul = 3                                 </P>
+        <P> NumSteps = TimeSimul/TimeStep                 </P>
+        <P> IO_CheckSteps = NumSteps+1                    </P>
+        <P> IO_InfoSteps = 10000                          </P>
         <P> Re = 33                                       </P>
         <P> Kinvis = 1.0/Re                               </P>
         <P> A             = 0.001                         </P>
         <P> omega         = 1                             </P>
         <P> mass_ratio    = 7                            </P>
         <P> damping       = 0                             </P>
-        <P> Vr            = 10                             </P>
+        <P> Vr            = 8                             </P>
         <P> StructStiff   = PI*PI*PI*mass_ratio/(Vr*Vr)   </P>
         <P> StructRho     = PI*mass_ratio/4               </P>
         <P> StructDamp    = PI*PI*damping*mass_ratio/Vr   </P>
-        <P> FictDamp      = 10                            </P>
-        <P> FictMass      = 200                           </P>
-        <P> kdim          = 60                            </P>
-        <P> evtol         = 1.0714e-04                    </P>
-        <P> nvec          = 10                            </P>
-        <P> displacement  = 0.0001                    </P>
-        <P> velocity      = -0.0                     </P>
+        <P> kdim          = 46                            </P>
+        <P> evtol         = 1.0e-05                       </P>
+        <P> nvec          = 4                             </P>
         </PARAMETERS>
 
         <VARIABLES>
