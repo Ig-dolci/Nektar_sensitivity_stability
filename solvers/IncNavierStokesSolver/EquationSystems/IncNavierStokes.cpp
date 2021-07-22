@@ -316,7 +316,9 @@ namespace Nektar
             bndConds = m_fields[i]->GetBndConditions();
             for(n = 0; n < m_fields[i]->GetBndConditions().size(); ++n)
             {
-                if(m_fields[i]->GetBndConditions()[n]->IsTimeDependent())
+                if(m_fields[i]->GetBndConditions()[n]->IsTimeDependent() ||
+                   m_fields[i]->GetBndConditions()[n]->GetUserDefined() ==
+                   "MovingBody")
                 {
                     varName = m_session->GetVariable(i);
                     m_fields[i]->EvaluateBoundaryConditions(time, varName);

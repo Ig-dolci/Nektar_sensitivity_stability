@@ -227,7 +227,7 @@ namespace Nektar
                 m_precon = CreatePrecon(m_locToGloMap.lock());
                 m_precon->BuildPreconditioner();
             }
-
+            
             PrepareLocalSchurComplement();
         }
 

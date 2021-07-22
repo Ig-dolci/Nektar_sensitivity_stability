@@ -76,7 +76,7 @@ namespace SolverUtils
             ASSERTL0(funcNameElmt, "Requires BODYFORCE or FIELDFORCE tag "
                      "specifying function name which prescribes body force.");
         }
-
+     
         m_funcName = funcNameElmt->GetText();
         ASSERTL0(m_session->DefinesFunction(m_funcName),
                  "Function '" + m_funcName + "' not defined.");
@@ -238,34 +238,6 @@ namespace SolverUtils
 
             }
 
-            // //   /* code */
-            // for (int j = 0; j < velai[0].size(); ++j)
-            // {
-            //     std::complex<double> ud(veldr[0][j], veldi[0][j]);
-            //     std::complex<double> vd(veldr[1][j], veldi[1][j]);
-            //     std::complex<double> ua(velar[0][j], velai[0][j]);
-            //     std::complex<double> va(velar[1][j], velai[1][j]);
-            //     aux[j] = real(ud*conj(ud) + vd*conj(vd));
-            //     aux1[j] = real(ua*conj(ua) + va*conj(va));
-
-            // }
-
-            // NekDouble norm_d = sqrt(pFields[0]->Integral(aux));
-            // NekDouble norm_a = sqrt(pFields[0]->Integral(aux1));
-            // cout << norm_d << endl;
-            // cout << norm_a << endl;
-
-            // for (int j = 0; j < velai[0].size(); ++j)
-            // {
-            //     veldr[0][j] = veldr[0][j]/norm_d;
-            //     veldr[1][j] = veldr[1][j]/norm_d;
-            //     veldi[0][j] = veldi[0][j]/norm_d;
-            //     veldi[1][j] = veldi[1][j]/norm_d;
-            //     velar[0][j] = velar[0][j]/(norm_a);
-            //     velar[1][j] = velar[1][j]/(norm_a);
-            //     velai[0][j] = velai[0][j]/(norm_a);
-            //     velai[1][j] = velai[1][j]/(norm_a);
-            // }
             //   /* code */
             for (int j = 0; j < velai[0].size(); ++j)
             {
@@ -273,11 +245,8 @@ namespace SolverUtils
                 std::complex<double> vd(veldr[1][j], veldi[1][j]);
                 std::complex<double> ua(velar[0][j], velai[0][j]);
                 std::complex<double> va(velar[1][j], velai[1][j]);
-                aux[j] = real(ua*ud + va*vd);
+                aux[j]  = real(ua*ud + va*vd);
                 aux1[j] = imag(ua*ud + va*vd);
-                // aux[j] = real(conj(ua)*ud + conj(va)*vd);
-                // aux1[j] = imag(conj(ua)*ud + conj(va)*vd);
-
             }
         
 
@@ -363,6 +332,8 @@ namespace SolverUtils
                 // std::complex<double> grad_sigma2 = (- v_xa*conj(ud) - v_ya*conj(vd) + conj(u_yd)*ua + conj(v_yd)*va);
                 std::complex<double> grad_sigma1 = (+ u_xa*ud + u_ya*vd - u_xd*ua - v_xd*va);
                 std::complex<double> grad_sigma2 = (+ v_xa*ud + v_ya*vd - u_yd*ua - v_yd*va);
+                // NekDouble grad_sigma1 = (+ real(u_xa)*real(ud) + real(u_ya)*real(vd) - real(u_xd)*real(ua) - real(v_xd)*real(va));
+                // NekDouble grad_sigma2 = (+ real(v_xa)*real(ud) + real(v_ya)*real(vd) - real(u_yd)*real(ua) - real(v_yd)*real(va));
             
                 std::string evol_operator = m_session->GetSolverInfo("ForcingSensitivity");
 
@@ -379,6 +350,8 @@ namespace SolverUtils
                     
                     baseflow_sens[0][j] = real(grad_sigma1);
                     baseflow_sens[1][j] = real(grad_sigma2);
+                    // baseflow_sens[0][j] = grad_sigma1;
+                    // baseflow_sens[1][j] = grad_sigma2;
                     // baseflow_sens[0][j] = real(grad_sigma1)*deltaU[0][j];
                     // baseflow_sens[1][j] = real(grad_sigma2)*deltaU[1][j];
 
@@ -401,6 +374,7 @@ namespace SolverUtils
 
 
         }
+        
         else if(boost::iequals(control, "Activate"))
         {
             /* code */
@@ -451,7 +425,6 @@ namespace SolverUtils
                         LibUtilities::NullFieldMetaDataMap,
                         ElementGIDs);
 
-            printf("control\n");
             for(int j = 0; j < 2; ++j)
             {
                 
@@ -490,8 +463,7 @@ namespace SolverUtils
             {
                 // ||U||
                 aux[j] = sqrt(Vel[0][j]*Vel[0][j] + Vel[1][j]*Vel[1][j])*sqrt(Vel[0][j]*Vel[0][j] + Vel[1][j]*Vel[1][j]);
-                
-               
+                   
             }
             
             for (int i = 0; i < nvar; ++i)
@@ -512,6 +484,7 @@ namespace SolverUtils
         }
         else
         {
+
             /* code */
             Array<OneD, Array<OneD, NekDouble> > tmp(pFields.size());
             for (int i = 0; i < pFields.size(); ++i)
@@ -579,11 +552,6 @@ namespace SolverUtils
         }
     }
 
-    void ForcingBody::GetDislpAcel(NekDouble disp, NekDouble acel)
-    {
-        y= disp;
-        ac=acel;
-    }
     void ForcingBody::v_Apply(
             const Array<OneD, MultiRegions::ExpListSharedPtr> &fields,
             const Array<OneD, Array<OneD, NekDouble> > &inarray,
@@ -622,38 +590,38 @@ namespace SolverUtils
             Array<OneD, NekDouble> x0(physTot);
             Array<OneD, NekDouble> x1(physTot);
             fields[0]->GetCoords(x0, x1);
-            NekDouble sigma;
+            // NekDouble sigma;
             
-            m_session->LoadParameter("sigma", sigma);
+            // m_session->LoadParameter("sigma", sigma);
         
-            NekDouble xa, ya, xp, yp;
-            m_session->LoadParameter("xp",  xp);
-            m_session->LoadParameter("yp", yp);
+            // NekDouble xa, ya, xp, yp;
+            // m_session->LoadParameter("xp",  xp);
+            // m_session->LoadParameter("yp", yp);
            
-            for(int i = 0; i < m_Forcing.size(); ++i)
-            {   
-                for (int j = 0; j < m_Forcing[0].size(); ++j)
-                {       
-                    xa = x0[j];
-                    ya = x1[j];
-                    xp = xp;
-                    yp = yp;
+            // for(int i = 0; i < m_Forcing.size(); ++i)
+            // {   
+            //     for (int j = 0; j < m_Forcing[0].size(); ++j)
+            //     {       
+            //         xa = x0[j];
+            //         ya = x1[j];
+            //         xp = xp;
+            //         yp = yp;
                     
-                    outarray[i][j] = exp(-((xa-xp)*(xa-xp)/sigma + (ya-yp)*(ya-yp)/sigma))*m_Forcing[i][j] + outarray[i][j]-ac;
+            //         outarray[i][j] = exp(-((xa-xp)*(xa-xp)/sigma + (ya-yp)*(ya-yp)/sigma))*m_Forcing[i][j] + outarray[i][j]-ac;
 
                     
                               
-                }
+            //     }
             
-            }
+            // }
             
             
         
-            // for (int i = 0; i < m_NumVariable; i++)
-            // {
-            //     Vmath::Vadd(outarray[i].size(), outarray[i], 1,
-            //                 m_Forcing[i], 1, outarray[i], 1);
-            // }
+            for (int i = 0; i < m_NumVariable; i++)
+            {
+                Vmath::Vadd(outarray[i].size(), outarray[i], 1,
+                            m_Forcing[i], 1, outarray[i], 1);
+            }
 
         }
         else

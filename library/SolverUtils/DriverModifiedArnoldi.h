@@ -58,9 +58,8 @@ class DriverModifiedArnoldi: public DriverArnoldi
             p->InitObject();
             return p;
         }
-        static void Getalpha(NekDouble &a);
-
-        ///Name of the class
+        
+        // ///Name of the class
         static std::string className;
 
     protected:
@@ -131,7 +130,7 @@ class DriverModifiedArnoldi: public DriverArnoldi
                         Array<OneD, NekDouble> &zvec,
                         Array<OneD, NekDouble> &wr,
                         Array<OneD, NekDouble> &wi);
-
+       
         static std::string driverLookupId;
 };
 

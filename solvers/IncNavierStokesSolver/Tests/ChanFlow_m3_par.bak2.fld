@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<NEKTAR>
+    <Metadata>
+        <Provenance>
+            <GitBranch>refs/heads/master</GitBranch>
+            <GitSHA1>2eb0189c14ac671ad8b2e334e7577713afd69d2d</GitSHA1>
+            <Hostname>daiane</Hostname>
+            <NektarVersion>5.0.0</NektarVersion>
+            <Timestamp>14-Oct-2020 15:46:37</Timestamp>
+        </Provenance>
+        <ChkFileNum>2</ChkFileNum>
+        <Kinvis>1</Kinvis>
+        <SessionName0>ChanFlow_m3_par.xml</SessionName0>
+        <Time>1.0000000000000007</Time>
+        <TimeStep>0.001</TimeStep>
+    </Metadata>
+    <ELEMENTS FIELDS="u,v,p" SHAPE="Quadrilateral" BASIS="Modified_A,Modified_A" NUMMODESPERDIR="UNIORDER:3,3" ID="0-3" COMPRESSED="B64Z-LittleEndian" BITSIZE="64">eJxjYMAHLtgzQumli7KmOktetIGJw+hVYPBqDy4TYPoFoPQl4WZTe78Le2D6z/0HgfNQc07BxbHbiwlYoOq40dyD315MANO/DMU9r3DaCwMXXq4qki1ssFkusWv5pKUr4OrjDA7dK9i5Y48zz/FV2edv4DQHpp/9wtsj8Yvm79HpElz2LH/zHpj+p5cM0k7ePGgjtna54+eQqzbo+tDtxQXm6LD3qy/YbvOgpXzb3BW39+Cyl5B+v6Atjczn9u9ZHPTcb+/v03vEINIOgmDqg32ySravgLXIXl6ouBpU3OcL39Qfuzj3ejzqW5ejL2Vrc3Yxu06y4N5bybF3ukJe28D0w+xTXCxuniEkuFcNTfyC+3wt9UsKe2H6YeKZKzNn3kqytsVlrwRUXBIqrpD5Imy2g+DedIMipr2K4rb7QuNE1u1i2is+UeRS25RHe3DZK4kmLn4m9tDvs4J7Yfph4jfPKeT8TrewBQDoWeRK</ELEMENTS>
+</NEKTAR>

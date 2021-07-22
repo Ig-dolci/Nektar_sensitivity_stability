@@ -52,7 +52,8 @@ string DriverModifiedArnoldi::className =
 string DriverModifiedArnoldi::driverLookupId =
         LibUtilities::SessionReader::RegisterEnumValue("Driver",
                                     "ModifiedArnoldi",0);
-NekDouble alfa;
+// int c0;
+// Array<OneD, NekDouble> m_y(2);
 /**
  *
  */
@@ -97,6 +98,7 @@ void DriverModifiedArnoldi::v_InitObject(ostream &out)
     //FwdTrans Initial conditions to be in Coefficient Space
     m_equ[m_nequ-1] ->TransPhysToCoeff();
 
+  
 }
 
 
@@ -108,7 +110,7 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
     int i               = 0;
     int j               = 0;
     int nq              = m_equ[0]->UpdateFields()[0]->GetNcoeffs();
-    int ntot            = m_nfields*nq;
+    int ntot            = m_nfields*nq + 2;
     int converged       = 0;
     NekDouble resnorm   = 0.0;
     ofstream evlout;
@@ -160,6 +162,7 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
     // Perform one iteration to enforce boundary conditions.
     // Set this as the initial value in the sequence.
     EV_update(Kseq[1], Kseq[0]);
+
     if (m_comm->GetRank() == 0)
     {
         out << "Iteration: " << 0 <<  endl;
@@ -170,22 +173,26 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
     m_comm->AllReduce(alpha[0], Nektar::LibUtilities::ReduceSum);
     alpha[0] = std::sqrt(alpha[0]);
     Vmath::Smul(ntot, 1.0/alpha[0], Kseq[0], 1, Kseq[0], 1);
-    alfa=alpha[0];
+    
     // Fill initial krylov sequence
     NekDouble resid0;
     for (i = 1; !converged && i <= m_kdim; ++i)
     {
+ 
         // Compute next vector
         EV_update(Kseq[i-1], Kseq[i]);
+        cout << "Modified Arnoldi: " <<Kseq[i][ntot-2] << endl;
+        cout << "Modified Arnoldi: " <<Kseq[i][ntot-1] << endl;
+
 
         // Normalise
         alpha[i] = Blas::Ddot(ntot, &Kseq[i][0], 1, &Kseq[i][0], 1);
         m_comm->AllReduce(alpha[i], Nektar::LibUtilities::ReduceSum);
         alpha[i] = std::sqrt(alpha[i]);
-        alfa=alpha[i];
+        
         //alpha[i] = std::sqrt(alpha[i]);
         Vmath::Smul(ntot, 1.0/alpha[i], Kseq[i], 1, Kseq[i], 1);
-
+        
         // Copy Krylov sequence into temporary storage
         for (int k = 0; k < i + 1; ++k)
         {
@@ -221,19 +228,22 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
         {
             // Shift all the vectors in the sequence.
             // First vector is removed.
+            
             for (int j = 1; j <= m_kdim; ++j)
             {
                 alpha[j-1] = alpha[j];
                 Vmath::Vcopy(ntot, Kseq[j], 1, Kseq[j-1], 1);
             }
-
+           
             // Compute next vector
             EV_update(Kseq[m_kdim - 1], Kseq[m_kdim]);
-
+            // Kseq[m_kdim][ntot-2] = m_y[0];
+            // Kseq[m_kdim][ntot-1] = m_y[1];
+            // Vmath::Zero(2, m_y, 1);
             // Compute new scale factor
             alpha[m_kdim] = Blas::Ddot(ntot, &Kseq[m_kdim][0], 1,
                                              &Kseq[m_kdim][0], 1);
-            alfa=alpha[m_kdim];
+            
             m_comm->AllReduce(alpha[m_kdim], Nektar::LibUtilities::ReduceSum);
             alpha[m_kdim] = std::sqrt(alpha[m_kdim]);
             Vmath::Smul(ntot, 1.0/alpha[m_kdim], Kseq[m_kdim], 1,
@@ -307,15 +317,17 @@ void DriverModifiedArnoldi::EV_update(
     Array<OneD, NekDouble> &src,
     Array<OneD, NekDouble> &tgt)
 {
+    // c0=0;
     // Copy starting vector into first sequence element.
     CopyArnoldiArrayToField(src);
     m_equ[0]->TransCoeffToPhys();
 
     m_equ[0]->SetTime(0.);
     m_equ[0]->DoSolve();
-
+    
     if(m_EvolutionOperator == eTransientGrowth)
     {
+        // c0=1;
         Array<OneD, MultiRegions::ExpListSharedPtr> fields;
         fields = m_equ[0]->UpdateFields();
 
@@ -326,6 +338,7 @@ void DriverModifiedArnoldi::EV_update(
         m_equ[1]->SetTime(0.);
         m_equ[1]->DoSolve();
     }
+    
 
     // Copy starting vector into first sequence element.
     CopyFieldToArnoldiArray(tgt);
@@ -524,6 +537,7 @@ void DriverModifiedArnoldi::EV_post(
     }
     else if (icon == nvec)
     {
+        
         // Converged, write out eigenvectors
         EV_big(Tseq, Kseq, ntot, kdim, icon, zvec, wr, wi);
         Array<OneD, MultiRegions::ExpListSharedPtr> fields
@@ -540,7 +554,9 @@ void DriverModifiedArnoldi::EV_post(
                 WriteEvs(cout, j, wr[j], wi[j]);
             }
             WriteFld(file,Kseq[j]);
+      
         }
+        
     }
     else
     {
@@ -603,9 +619,5 @@ void DriverModifiedArnoldi::EV_big(
     }
 }
 
-void DriverModifiedArnoldi::Getalpha(NekDouble &a)
-{
-    a=alfa;
-}
 }
 }

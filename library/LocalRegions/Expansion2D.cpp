@@ -1303,6 +1303,7 @@ namespace Nektar
                                         const Array<OneD, const NekDouble > &primCoeffs,
                                                DNekMatSharedPtr &inoutmat)
         {
+            
             ASSERTL1(IsBoundaryInteriorExpansion(),
                      "Not set up for non boundary-interior expansions");
             ASSERTL1(inoutmat->GetRows() == inoutmat->GetColumns(),

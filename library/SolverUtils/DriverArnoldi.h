@@ -47,6 +47,8 @@ class DriverArnoldi: public Driver
 {
 public:
     friend class MemoryManager<DriverArnoldi>;
+    static void ReturnStructVector(NekDouble& y, NekDouble& y1, int& c);
+    static void GetStructVector(NekDouble y, NekDouble y1);
 
     SOLVER_UTILS_EXPORT void ArnoldiSummary(std::ostream &out);
 

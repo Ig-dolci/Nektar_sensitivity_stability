@@ -42,7 +42,8 @@
 
 #include <LibUtilities/LinearAlgebra/NekTypeDefs.hpp>
 #include <LibUtilities/LinearAlgebra/NekMatrix.hpp>
-
+#include<iostream>
+using namespace std;
 namespace Nektar
 {
     namespace MultiRegions
@@ -351,6 +352,7 @@ namespace Nektar
                 {
                     vExp->AddRobinMassMatrix(
                         rBC->m_robinID, rBC->m_robinPrimitiveCoeffs, new_mat);
+                    
                 }
 
                 // redeclare loc_mat to point to new_mat plus the scalar.
@@ -398,8 +400,9 @@ namespace Nektar
                 {
                     vExp->AddRobinMassMatrix(
                         rBC->m_robinID, rBC->m_robinPrimitiveCoeffs, new_mat);
+                    
                 }
-
+                // cout << "AddRobinMassMatrix" << endl;
                 // redeclare loc_mat to point to new_mat plus the scalar.
                 tmp_mat = MemoryManager<DNekScalMat>::AllocateSharedPtr(
                     1.0, new_mat);

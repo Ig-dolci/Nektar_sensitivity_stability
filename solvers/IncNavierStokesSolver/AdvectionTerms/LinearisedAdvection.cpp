@@ -190,7 +190,7 @@ void LinearisedAdvection::v_InitObject(
             }
             else if (m_session->GetSolverInfo("BaseFlowform") == "TimeDependent")
             {
-                m_session->LoadParameter("NumSteps",m_slices);
+                m_session->LoadParameter("N_slices",m_slices);
             }
            
         }
@@ -247,6 +247,7 @@ void LinearisedAdvection::v_InitObject(
     {
         m_period=(m_session->GetParameter("TimeStep")*m_slices)/(m_slices-1.);
     }
+    contador=0;
 
 }
 
@@ -269,7 +270,7 @@ void LinearisedAdvection::v_Advect(
 {
     ASSERTL1(nConvectiveFields == inarray.size(),
              "Number of convective fields and Inarray are not compatible");
-
+    contador = 0;
     int nPointsTot  = fields[0]->GetNpoints();
     int ndim        = advVel.size();
     int nBaseDerivs = (m_halfMode || m_singleMode) ? 2 : m_spacedim;

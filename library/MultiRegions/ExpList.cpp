@@ -1320,6 +1320,7 @@ namespace Nektar
                     // add local matrix contribution
                     for(rBC = RobinBCInfo.find(n)->second;rBC; rBC = rBC->next)
                     {
+                        
                         (*m_exp)[n]->AddRobinMassMatrix(rBC->m_robinID,rBC->m_robinPrimitiveCoeffs,new_mat);
                     }
 

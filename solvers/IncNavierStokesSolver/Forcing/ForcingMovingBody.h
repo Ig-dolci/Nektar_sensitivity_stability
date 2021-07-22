@@ -105,8 +105,8 @@ class ForcingMovingBody : public SolverUtils::Forcing
 
         void StructureSolver(
             const Array<OneD, MultiRegions::ExpListSharedPtr> &pFields,
-                  int cn,
-                  Array<OneD, NekDouble> &MotPhysinArray);
+                  int cn, Array<OneD, NekDouble> &HydroForces,
+                  Array<OneD, NekDouble> &BodyMotions);
 
         void EvaluateStructDynModel(
             const Array<OneD, MultiRegions::ExpListSharedPtr> &pFields,

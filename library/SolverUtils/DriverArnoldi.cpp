@@ -53,7 +53,8 @@ DriverArnoldi::DriverArnoldi(
     m_session->LoadParameter("IO_InfoSteps", m_infosteps, 1);
 }
 
-
+int c01;
+Array<OneD, NekDouble> m_y1(2);
 /**
  * Destructor
  */
@@ -110,6 +111,8 @@ void DriverArnoldi::v_InitObject(ostream &out)
 
     m_session->LoadParameter("imagShift",m_imagShift,0.0);
 
+    m_y1[0] = 0.;
+    m_y1[1] = 0.;
     // The imaginary shift is applied at system assembly
     // Only if using HOMOGENEOUS expansion and ModeType set to SingleMode
     if(m_imagShift != 0.0)
@@ -188,6 +191,9 @@ void DriverArnoldi::CopyArnoldiArrayToField(Array<OneD, NekDouble> &array)
         Vmath::Vcopy(nq, &array[k*nq], 1, &fields[k]->UpdateCoeffs()[0], 1);
         fields[k]->SetPhysState(false);
     }
+    m_y1[0] = array[nq*m_nfields];
+    m_y1[1] = array[nq*m_nfields+1];
+
 }
 
 /**
@@ -210,14 +216,21 @@ void DriverArnoldi::CopyFieldToArnoldiArray(Array<OneD, NekDouble> &array)
     {
         fields = m_equ[m_nequ-1]->UpdateFields();
     }
-
+    
+    int nq = fields[0]->GetNcoeffs();
     for (int k = 0; k < m_nfields; ++k)
     {
-        int nq = fields[0]->GetNcoeffs();
         Vmath::Vcopy(nq,  &fields[k]->GetCoeffs()[0], 1, &array[k*nq], 1);
         fields[k]->SetPhysState(false);
 
+        // cout << "array size: " << array.size() << ", nq: " << m_nfields*nq << endl;
+
     }
+    
+    array[m_nfields*nq]   = m_y1[0];
+    array[m_nfields*nq+1] = m_y1[1];    
+      
+    // Vmath::Zero(2, m_y1, 1);
 }
 
 
@@ -331,5 +344,17 @@ void DriverArnoldi::WriteEvs(
     }
 }
 
+void DriverArnoldi::ReturnStructVector(NekDouble & y, NekDouble& y1, int& c)
+{
+    y  = m_y1[0];
+    y1 = m_y1[1];
+    c  = 0;
+}
+
+void DriverArnoldi::GetStructVector(NekDouble y, NekDouble y1)
+{
+    m_y1[0] = y;
+    m_y1[1] = y1;
+}
 }
 }

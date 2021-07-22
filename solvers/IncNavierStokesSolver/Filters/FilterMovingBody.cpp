@@ -39,6 +39,7 @@
 #include <LocalRegions/Expansion2D.h>
 #include <LocalRegions/Expansion3D.h>
 #include <IncNavierStokesSolver/Filters/FilterMovingBody.h>
+#include <SolverUtils/DriverModifiedArnoldi.h>
 
 using namespace std;
 
@@ -49,7 +50,7 @@ std::string FilterMovingBody::className = SolverUtils::GetFilterFactory().
         RegisterCreatorFunction("MovingBody",
                                 FilterMovingBody::create,
                                 "Moving Body Filter");
-
+int aux;
 NekDouble bf_drag_t, bf_lift_t, bf_drag_p, bf_lift_p;
 NekDouble adj_drag_t, adj_lift_t, adj_drag_p, adj_lift_p;
 NekDouble bfgrad_drag_t, bfgrad_lift_t, bfgrad_drag_p, bfgrad_lift_p;
@@ -185,8 +186,12 @@ void FilterMovingBody::v_Initialise(
 
     LibUtilities::CommSharedPtr vComm = pFields[0]->GetComm();
 
+    bool m_isHomogeneous1D;
+    // For 3DH1D
+    m_session->MatchSolverInfo("Homogeneous", "1D",
+                               m_isHomogeneous1D, false);
     std::string solver_type = m_session->GetSolverInfo("SolverType");
-    if(boost::iequals(solver_type, "Mapping"))
+    if(boost::iequals(solver_type, "VCSMapping") && m_isHomogeneous1D)
     {
         if (vComm->GetRank() == 0)
         {
@@ -233,61 +238,69 @@ void FilterMovingBody::v_Initialise(
             m_outputStream[1] << endl;
         }
     }
-    else if(boost::iequals(solver_type, "VelocityCorrectionScheme"))
+    else 
     {
-      if (vComm->GetRank() == 0)
-      {
-          // Open output stream for cable forces
-          m_outputStream[0].open(m_outputFile_fce.c_str());
-          m_outputStream[0] << "#";
-          m_outputStream[0].width(7);
-          m_outputStream[0] << "Time";
-          m_outputStream[0].width(15);
-          m_outputStream[0] << "Fx (press)";
-          m_outputStream[0].width(15);
-          m_outputStream[0] << "Fx (visc)";
-          m_outputStream[0].width(15);
-          m_outputStream[0] << "Fx (tot)";
-          m_outputStream[0].width(15);
-          m_outputStream[0] << "Fy (press)";
-          m_outputStream[0].width(15);
-          m_outputStream[0] << "Fy (visc)";
-          m_outputStream[0].width(15);
-          m_outputStream[0] << "Fy (tot)";
-          m_outputStream[0] << endl;
+        if (vComm->GetRank() == 0)
+        {
+            // Open output stream for cable forces
+            m_outputStream[0].open(m_outputFile_fce.c_str());
+            m_outputStream[0] << "#";
+            m_outputStream[0].width(7);
+            m_outputStream[0] << "Time";
+            m_outputStream[0].width(15);
+            m_outputStream[0] << "Fx (press)";
+            m_outputStream[0].width(15);
+            m_outputStream[0] << "Fx (visc)";
+            m_outputStream[0].width(15);
+            m_outputStream[0] << "Fx (tot)";
+            m_outputStream[0].width(15);
+            m_outputStream[0] << "Fy (press)";
+            m_outputStream[0].width(15);
+            m_outputStream[0] << "Fy (visc)";
+            m_outputStream[0].width(15);
+            m_outputStream[0] << "Fy (tot)";
+            m_outputStream[0] << endl;
 
-          // Open output stream for cable motions
-          m_outputStream[1].open(m_outputFile_mot.c_str());
-          m_outputStream[1] << "#";
-          m_outputStream[1].width(7);
-          m_outputStream[1] << "Time";
-          m_outputStream[1].width(15);
-          m_outputStream[1] << "Disp_x";
-          m_outputStream[1].width(15);
-          m_outputStream[1] << "Vel_x";
-          m_outputStream[1].width(15);
-          m_outputStream[1] << "Acel_x";
-          m_outputStream[1].width(15);
-          m_outputStream[1] << "Disp_y";
-          m_outputStream[1].width(15);
-          m_outputStream[1] << "Vel_y";
-          m_outputStream[1].width(15);
-          m_outputStream[1] << "Acel_y";
-          m_outputStream[1] << endl;
-      }
+            // Open output stream for cable motions
+            m_outputStream[1].open(m_outputFile_mot.c_str());
+            m_outputStream[1] << "#";
+            m_outputStream[1].width(7);
+            m_outputStream[1] << "Time";
+            m_outputStream[1].width(15);
+            m_outputStream[1] << "Disp_x";
+            m_outputStream[1].width(15);
+            m_outputStream[1] << "Vel_x";
+            m_outputStream[1].width(15);
+            m_outputStream[1] << "Acel_x";
+            m_outputStream[1].width(15);
+            m_outputStream[1] << "Disp_y";
+            m_outputStream[1].width(15);
+            m_outputStream[1] << "Vel_y";
+            m_outputStream[1].width(15);
+            m_outputStream[1] << "Acel_y";
+            m_outputStream[1] << endl;
+        }
     }
-    
-    int nt  = pFields[0]->GetNpoints();
-    int dim = pFields.size()-1;
-    m_baseflow = Array<OneD, Array<OneD, NekDouble> >(dim+1);
-    for(int j = 0; j < dim+1; ++j)
+    std::string evol_operator = m_session->GetSolverInfo("EvolutionOperator");
+    if(boost::iequals(evol_operator, "Direct") || boost::iequals(evol_operator, "Adjoint")
+                        || boost::iequals(evol_operator, "TransientGrowth"))
     {
-        m_baseflow[j] = Array<OneD, const NekDouble> (nt, 0.0);
+        
+        int nt  = pFields[0]->GetNpoints();
+        int dim = pFields.size()-1;
+        m_baseflow = Array<OneD, Array<OneD, NekDouble> >(dim+1);
+        for(int j = 0; j < dim+1; ++j)
+        {
+            m_baseflow[j] = Array<OneD, const NekDouble> (nt, 0.0);
+        }
+        
+        // Getting the base flow fields
+        string file = m_session->GetFunctionFilename("Baseflow", 0);
+        ImportFldBound_base(file,pFields);
     }
     
-    // Getting the base flow fields
-    string file = m_session->GetFunctionFilename("Baseflow", 0);
-    ImportFldBound_base(file,pFields);
+    
+    
 
 
     
@@ -303,11 +316,17 @@ void FilterMovingBody::UpdateForce(
               Array<OneD, NekDouble> &Aeroforces,
         const NekDouble &time)
 {
+    bool m_isHomogeneous1D;
+    // For 3DH1D
+    m_session->MatchSolverInfo("Homogeneous", "1D",
+                               m_isHomogeneous1D, false);
+    NekDouble aux0, aux1;
+    SolverUtils::DriverArnoldi::ReturnStructVector(aux0, aux1, aux);
     int n, cnt, elmtid, nq, offset, boundary;
     int nt  = pFields[0]->GetNpoints();
     int dim = pFields.size()-1;
     int local_planes, Num_z_pos;
-
+    
     StdRegions::StdExpansionSharedPtr elmt;
     Array<OneD, int> BoundarytoElmtID;
     Array<OneD, int> BoundarytoTraceID;
@@ -352,7 +371,7 @@ void FilterMovingBody::UpdateForce(
     // have just few planes per processor
     std::string solver_type = m_session->GetSolverInfo("SolverType");
     std::string evol_operator = m_session->GetSolverInfo("EvolutionOperator");
-    if(boost::iequals(solver_type, "Mapping"))
+    if(boost::iequals(solver_type, "VCSMapping") && m_isHomogeneous1D)
     {
         Num_z_pos = pFields[0]->GetHomogeneousBasis()->GetNumModes();
     }
@@ -374,7 +393,7 @@ void FilterMovingBody::UpdateForce(
             : 1;
     NekDouble mu = rho*pSession->GetParameter("Kinvis");
 
-    if(boost::iequals(solver_type, "Mapping"))
+    if(boost::iequals(solver_type, "VCSMapping") && m_isHomogeneous1D)
     {
 
         for(int i = 0; i < pFields.size(); ++i)
@@ -798,9 +817,9 @@ void FilterMovingBody::UpdateForce(
 
     }
     // Only twodimensional
-    else if(boost::iequals(solver_type, "VelocityCorrectionScheme"))
+    else
     {
-
+        
         for(int i = 0; i < pFields.size(); ++i)
         {
             pFields[i]->BwdTrans(pFields[i]->GetCoeffs(),
@@ -958,7 +977,7 @@ void FilterMovingBody::UpdateForce(
                     Fxp[0] += bc->Integral(drag_p);
                     Fyp[0] += bc->Integral(lift_p);
 
-                    if (boost::iequals(evol_operator, "Adjoint"))
+                    if (boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && aux==1))
                     {
                         // Array<OneD, NekDouble>  drag_t(nbc,0.0);
                         // Array<OneD, NekDouble>  lift_t(nbc,0.0);
@@ -1036,7 +1055,9 @@ void FilterMovingBody::UpdateForce(
                     }
         
                     
-                    if ((boost::iequals(evol_operator, "Direct") || boost::iequals(evol_operator, "Adjoint"))  && counter==0)
+                    if ((boost::iequals(evol_operator, "Direct") || boost::iequals(evol_operator, "Adjoint")
+                        || boost::iequals(evol_operator, "TransientGrowth"))  
+                         && counter==0)
                     {   
                         Array<OneD, NekDouble>  pElmt(nt);
                         Array<OneD, NekDouble>  UElmt(nt);
@@ -1125,7 +1146,14 @@ void FilterMovingBody::UpdateForce(
                         Vmath::Vadd(nbc, temp2,     1, lift_t,     1, lift_t,    1);
                         Vmath::Smul(nbc, -mu,          lift_t,     1, lift_t,    1);
 
-
+                        // float grad_v_adj [BndExp[n]->GetExpSize()*nbc] = {0.0508126, 0.0486929, 0.0451134, 0.0402479, 0.0343174, 0.0275738, 0.0202861, 0.0319774, 0.0382198, 0.043545, 0.0476424, 0.0502913, 0.0513616, 0.0508126, 1.27432e-06, 0.00225652, 0.00637333, 0.0119015, 0.0183474, 0.0252034, 0.0319776, 0.0384948, 0.0258192, 0.0154393, 0.00761358, 0.00246565, -2.11802e-05, 1.39352e-06, 0.135915, 0.119997, 0.103161, 0.0859932, 0.0691006, 
+                        // 0.0530822, 0.0384947, 0.188346, 0.186021, 0.180963, 0.173218, 0.162937, 0.150381, 0.135915, 0.153083, 0.163561, 0.1726, 0.17988, 0.185099, 0.187992, 0.188346, 0.0761854, 0.0894994, 0.102858, 0.116114, 0.129069, 0.141484, 0.153083, -3.06556e-08, 0.0123332, 0.024744, 0.0373003, 0.050051, 0.0630174, 0.0761854, -0.0761853, -0.0630174, -0.050051, -0.0373003, -0.024744, -0.0123332, 3.06552e-08, -0.153082, -0.141484, -0.129068, -0.116113, -0.102858, -0.0894993, -0.0761853, -0.188344, -0.18799, -0.185097, -0.179878, -0.172599, -0.163561, -0.153082, -0.188344, -0.186018, -0.18096, -0.173214, -0.162933, -0.150376, -0.13591, -0.13591, -0.119992, -0.103156, -0.0859881, -0.0690957, -0.0530775, -0.0384904, -0.0384905, -0.0258154, -0.015436, -0.00761106, -0.00246393, 2.20547e-05, -1.394e-06, -1.27477e-06, -0.00225739, -0.00637504, -0.011904, -0.0183506, -0.0252072, -0.0319817, -0.0319816, -0.0382243, -0.0435497, -0.0476472, -0.050296, -0.0513661, -0.0508168, -0.0508168, -0.0486968, -0.0451169, -0.040251, -0.0343201, -0.0275761, -0.020288, -0.0202879, -0.0127377, -0.00518603, 0.00211478, 0.00893492, 0.0150735, 0.0203609, 0.020361, 0.0246566, 0.0278603, 0.0298998, 0.0307333, 0.0303497, 0.0287692, 0.0287693, 0.0260447, 0.0222705, 0.0175815, 0.0121557, 0.00621175, -4.53363e-08, 4.53328e-08, -0.00621175, -0.0121556, -0.0175814, -0.0222704, -0.0260445, -0.0287691, -0.0287691, -0.0303496, -0.0307332, -0.0298996, -0.0278602, -0.0246566, -0.0203611, -0.0203611, -0.0150737, -0.00893543, -0.00211556, 0.00518494, 0.0127362, 0.0202861}; 
+                        // for (int m = 0; m < nbc; m++)
+                        // {
+                        //     /* code */
+                        //     Pb_base[m] = Pb_base[m]*(0.016 + grad_v_adj[m + i*nbc]);
+                        // }
+                        
                         // boundaries
                         Vmath::Vmul(nbc, Pb_base,       1, normals[0], 1, drag_p,    1);
                         Vmath::Vmul(nbc, Pb_base,       1, normals[1], 1, lift_p,    1);             
@@ -1137,7 +1165,6 @@ void FilterMovingBody::UpdateForce(
                         bf_lift_p += bc->Integral(lift_p);
 
                        
-
                         
 
                         Vmath::Zero(nbc, temp,   0.0);
@@ -1227,31 +1254,28 @@ void FilterMovingBody::UpdateForce(
             }
 
             
-            if(boost::iequals(evol_operator, "Adjoint") )
+            if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && aux==1))
             {
                 Aeroforces[0] = Fxv[0] + Fxp[0];
                 Aeroforces[1] = Fyv[0] + Fyp[0];
-                Aeroforces[2] = bf_drag_t + bf_drag_p;
-                Aeroforces[3] = bf_lift_t + bf_lift_p;
-                Aeroforces[4] = bfgrad_drag_t + bfgrad_drag_p;
-                Aeroforces[5] = bfgrad_lift_t + bfgrad_lift_p;
-                Aeroforces[6] = adj_drag_t + adj_drag_p;
-                Aeroforces[7] = adj_lift_t + adj_lift_p;
+                Aeroforces[2] = bf_drag_t + bf_drag_p + bfgrad_drag_t + bfgrad_drag_p;
+                Aeroforces[3] = bf_lift_t + bf_lift_p + bfgrad_lift_t + bfgrad_lift_p;
+                Aeroforces[4] = adj_drag_t + adj_drag_p;
+                Aeroforces[5] = adj_lift_t + adj_lift_p;
                 
                 
                 
 
             }
-            else if(boost::iequals(evol_operator, "Direct") )
+            else if(boost::iequals(evol_operator, "Direct") || (boost::iequals(evol_operator, "TransientGrowth") && aux==0))
             {
                 Aeroforces[0] = Fxv[0] + Fxp[0];
                 Aeroforces[1] = Fyv[0] + Fyp[0];
-                Aeroforces[2] = bf_drag_t + bf_drag_p;
-                Aeroforces[3] = bf_lift_t + bf_lift_p;
-                Aeroforces[4] = bfgrad_drag_t + bfgrad_drag_p;
-                Aeroforces[5] = bfgrad_lift_t + bfgrad_lift_p;
+                Aeroforces[2] = bf_drag_t + bf_drag_p + bfgrad_drag_t + bfgrad_drag_p;
+                Aeroforces[3] = bf_lift_t + bf_lift_p + bfgrad_lift_t + bfgrad_lift_p;
                
-        
+                // cout << Aeroforces[3] << endl;
+                // cout << bf_lift_p << endl;
             }
             else
             {
@@ -1262,11 +1286,6 @@ void FilterMovingBody::UpdateForce(
 
         }
 
-    }
-    else
-    {
-          ASSERTL0(false,
-                  "This option is not enable.");
     }
 
     ++counter;
@@ -1357,6 +1376,7 @@ void FilterMovingBody::UpdateMotion(
               Array<OneD, NekDouble>                            &MotionVars,
         const NekDouble                                         &time)
 {
+    
     // Only output every m_outputFrequency.
     if ((m_index_m++) % m_outputFrequency)
     {
@@ -1369,29 +1389,25 @@ void FilterMovingBody::UpdateMotion(
     std::string evol_operator = m_session->GetSolverInfo("EvolutionOperator");
     std::string solver_type = m_session->GetSolverInfo("SolverType");
     
-    if(boost::iequals(solver_type, "Mapping"))
-    {
-        if(!pSession->DefinesSolverInfo("HomoStrip"))
-        {
-            pSession->LoadParameter("LZ", Length);
-            npts = m_session->GetParameter("HomModesZ");
-        }
-        else
-        {
-            pSession->LoadParameter("LC", Length);
-            npts = m_session->GetParameter("HomStructModesZ");
-        }
-    }
-    else if(boost::iequals(solver_type, "VelocityCorrectionScheme"))
-    {
+    // if(boost::iequals(solver_type, "VCSMapping") && m_isHomogeneous1D)
+    // {
+    //     if(!pSession->DefinesSolverInfo("HomoStrip"))
+    //     {
+    //         pSession->LoadParameter("LZ", Length);
+    //         npts = m_session->GetParameter("HomModesZ");
+    //     }
+    //     else
+    //     {
+    //         pSession->LoadParameter("LC", Length);
+    //         npts = m_session->GetParameter("HomStructModesZ");
+    //     }
+    // }
+    // else
+    // {
         npts = 1;
-    }
-    else
-    {
-          ASSERTL0(false,
-                  "This option is not valid.");
-    }
+    // }
 
+    
 
     NekDouble z_coords;
     for(int n = 0; n < npts; n++)

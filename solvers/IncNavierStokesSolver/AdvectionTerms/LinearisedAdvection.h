@@ -79,6 +79,7 @@ protected:
 
     /// number of slices
     int                                             m_slices;
+    int contador;
     /// period length
     NekDouble                                       m_period;
     /// interpolation vector

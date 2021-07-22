@@ -121,7 +121,7 @@ void DriverArpack::v_Execute(ostream &out)
     Array<OneD, NekDouble> tmpworkd;
 
     int nq     = m_equ[0]->UpdateFields()[0]->GetNcoeffs(); // Number of points in the mesh
-    int n      = m_nfields*nq;    // Number of points in eigenvalue calculation
+    int n      = m_nfields*nq+2;    // Number of points in eigenvalue calculation
     int lworkl = 3*m_kdim*(m_kdim+2); // Size of work array
     int ido ;     //REVERSE COMMUNICATION parameter. At the first call must be initialised at 0
     int info;     // do not set initial vector (info=0 random initial vector, info=1 read initial vector from session file)
@@ -163,7 +163,7 @@ void DriverArpack::v_Execute(ostream &out)
     iparam[3] = 1;      // blocksize to be used for recurrence
     iparam[4] = 0;      // number of converged ritz eigenvalues
     iparam[5] = 0;      // (deprecated)
-
+    
     // Use generalized B matrix for coupled solver.
     if (m_timeSteppingAlgorithm)
     {
@@ -202,6 +202,7 @@ void DriverArpack::v_Execute(ostream &out)
 
     while(ido != 99)//ido==-1 || ido==1 || ido==0)
     {
+        
         //Routine for eigenvalue evaluation for non-symmetric operators
         Arpack::Dnaupd( ido, &B,       // B='I' for std eval problem
                         n, problem,  m_nvec,
@@ -244,7 +245,7 @@ void DriverArpack::v_Execute(ostream &out)
                      // recommended in manual since it is not
                      // possible to impose forcing directly.
                 CopyArnoldiArrayToField(tmpworkd = workd + (ipntr[0]-1));
-
+                
                 m_equ[0]->TransCoeffToPhys();
 
                 m_equ[0]->DoSolve();

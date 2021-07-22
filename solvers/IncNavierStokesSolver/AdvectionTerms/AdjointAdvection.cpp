@@ -110,9 +110,20 @@ void AdjointAdvection::v_Advect(
         if (m_session->GetFunctionType("BaseFlow", m_session->GetVariable(0))
             == LibUtilities::eFunctionTypeFile)
         {
+
             string file = m_session->GetFunctionFilename("BaseFlow", 0);
-            int step = time/m_session->GetParameter("TimeStep");
-            int adj_step = m_slices - step;
+            int step = contador;
+            // time/m_session->GetParameter("TimeStep");
+            int num_step = m_session->GetParameter("NumSteps");
+            
+            int aux =time;
+            int period = m_session->GetParameter("period");
+            if (contador%m_slices==0)
+            {  
+                contador=0;
+
+            }
+            int adj_step = m_slices - contador;
             
             size_t found = file.find("%d");
             ASSERTL0(found != string::npos && file.find("%d", found+1) == string::npos,
@@ -121,7 +132,6 @@ void AdjointAdvection::v_Advect(
                     "specifier '%d', to index the time-slices.");
             char* buffer = new char[file.length() + 8];
 
-           
             sprintf(buffer, file.c_str(), adj_step);
             ImportFldBase(buffer,fields,1);
             
@@ -134,7 +144,7 @@ void AdjointAdvection::v_Advect(
         }
     }
 
-
+    ++contador;
     //Evaluate the linearised advection term
     for( int i = 0; i < ndim; ++i)
     {
@@ -206,6 +216,7 @@ void AdjointAdvection::v_Advect(
         }
         Vmath::Neg(nPointsTot,outarray[i],1);
     }
+    
 }
 
 } //end of namespace

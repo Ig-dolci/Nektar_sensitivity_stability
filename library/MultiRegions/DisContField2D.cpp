@@ -2163,17 +2163,50 @@ namespace Nektar
                 if(m_bndConditions[i]->GetBoundaryConditionType() ==
                        SpatialDomains::eRobin)
                 {
-                    int e,elmtid;
-                    Array<OneD, NekDouble> Array_tmp;
-
                     locExpList = m_bndCondExpansions[i];
 
                     int npoints    = locExpList->GetNpoints();
+
+                    std::vector<LibUtilities::FieldDefinitionsSharedPtr> FieldDef;
+                    std::vector<std::vector<NekDouble> >                 FieldData;
+
+                    Array<OneD, NekDouble> m_baseflow(npoints, 0.0);
+                    Array<OneD, NekDouble> tmp_coeff(locExpList->GetNcoeffs(), 0.0);
+                    Array<OneD, NekDouble> tmp_coeff1(locExpList->GetNcoeffs(), 0.0);
+                    string file = m_session->GetFunctionFilename("Baseflow_BC", 0);
+
+                    LibUtilities::FieldIOSharedPtr fld = LibUtilities::FieldIO::CreateForFile(
+                                                                m_session, file);
+
+                    fld->Import(file, FieldDef, FieldData);
+
+                   
+                    bool flag = FieldDef[0]->m_fields[0] ==
+                        m_session->GetVariable(0);
+
+                    ASSERTL0(flag, (std::string("Order of ") + file
+                                    + std::string(" data and that defined in "
+                                    "the session file differs")).c_str());
+
+                    locExpList->ExtractDataToCoeffs(
+                                        FieldDef[0],
+                                        FieldData[0],
+                                        FieldDef[0]->m_fields[0],
+                                        tmp_coeff);
+
+                  
+                
+                    locExpList->BwdTrans(tmp_coeff, m_baseflow);
+                    
+                    
+                    int e,elmtid;
+                    Array<OneD, NekDouble> Array_tmp;
+
                     Array<OneD, NekDouble> x0(npoints, 0.0);
                     Array<OneD, NekDouble> x1(npoints, 0.0);
                     Array<OneD, NekDouble> x2(npoints, 0.0);
                     Array<OneD, NekDouble> coeffphys(npoints);
-
+                    
                     locExpList->GetCoords(x0, x1, x2);
 
                     LibUtilities::Equation coeffeqn =
@@ -2183,9 +2216,15 @@ namespace Nektar
 
                     // evalaute coefficient
                     coeffeqn.Evaluate(x0, x1, x2, 0.0, coeffphys);
-
+                    for (int l = 0; l < coeffphys.size(); l++)
+                    {
+                        coeffphys[l] = m_baseflow[l]*coeffphys[l];
+                        
+                    }
+                    
                     for(e = 0; e < locExpList->GetExpSize(); ++e)
                     {
+                       
                         RobinBCInfoSharedPtr rInfo =
                             MemoryManager<RobinBCInfo>
                             ::AllocateSharedPtr(
@@ -2193,6 +2232,7 @@ namespace Nektar
                                 Array_tmp = coeffphys +
                                 locExpList->GetPhys_Offset(e));
 
+                        
                         elmtid = ElmtID[cnt+e];
                         // make link list if necessary
                         if(returnval.count(elmtid) != 0)
@@ -2204,7 +2244,7 @@ namespace Nektar
                 }
                 cnt += m_bndCondExpansions[i]->GetExpSize();
             }
-
+           
             return returnval;
         }
 
@@ -2461,6 +2501,7 @@ namespace Nektar
                     else if (m_bndConditions[i]->GetBoundaryConditionType()
                              == SpatialDomains::eRobin)
                     {
+                        
                         SpatialDomains::RobinBCShPtr bcPtr = std::static_pointer_cast<
                             SpatialDomains::RobinBoundaryCondition>
                                 (m_bndConditions[i]);
@@ -2479,16 +2520,34 @@ namespace Nektar
                                             m_robinFunction;
                             condition.Evaluate(x0, x1, x2, time,
                                                locExpList->UpdatePhys());
+                            
                         }
 
                         locExpList->IProductWRTBase(
                             locExpList->GetPhys(),
                             locExpList->UpdateCoeffs());
+                       
                     }
                     else if (m_bndConditions[i]->GetBoundaryConditionType()
                              == SpatialDomains::ePeriodic)
                     {
                         continue;
+                    }
+                    else if (boost::iequals(m_bndConditions[i]->GetUserDefined(),
+                                        "MovingBody"))
+                    {
+                        locExpList = m_bndCondExpansions[i];
+                        if (m_bndConditions[i]->GetBoundaryConditionType()
+                                == SpatialDomains::eDirichlet)
+                        {
+                            locExpList->FwdTrans_IterPerExp(
+                                        locExpList->GetPhys(),
+                                        locExpList->UpdateCoeffs());
+                        }
+                        else
+                        {
+                            ASSERTL0(false, "This type of BC not implemented yet");
+                        }
                     }
                     else
                     {

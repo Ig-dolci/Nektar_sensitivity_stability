@@ -451,6 +451,7 @@ namespace Nektar
         {
             m_bndCondBndWeight[index]   =   value;
         }
+        
 
         const LocTraceToTraceMapSharedPtr 
                 &DisContField2D::v_GetLocTraceToTraceMap() const
