@@ -1,6 +1,6 @@
 Adjoint-based Sensivity/Stabilility Analyses
 ========
-This repository is focused on adapting the Nektar++ to provide computations of sensitivity and stability analyses for fluid flow system, and fluid-structure insteraction system.
+This repository is focused on adapting the Nektar++ to provide computations of sensitivity and stability analyses for fluid flow system, and fluid-structure insteraction system. On the last case, the structure is rigid and able only to translate.
 
 Nektar ++ is an open-source software framework designed to support the
 development of high-performance scalable solvers for partial differential
