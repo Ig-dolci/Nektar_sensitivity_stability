@@ -13,7 +13,7 @@
           <I PROPERTY="Projection" VALUE="Galerkin" />
           <I PROPERTY="TimeIntegrationMethod" VALUE="IMEXOrder2" />
           <I PROPERTY="VibrationType" VALUE="Constrained"/>
-          <I PROPERTY="Driver" VALUE="Arpack" />
+          <I PROPERTY="Driver" VALUE="ModifiedArnoldi" />
           <I PROPERTY="ODESolver" VALUE="Newmark" />
         </SOLVERINFO>
 
@@ -25,9 +25,7 @@
         <P> IO_InfoSteps = 10000                          </P>
         <P> Re = 33                                       </P>
         <P> Kinvis = 1.0/Re                               </P>
-        <P> A             = 0.001                         </P>
-        <P> omega         = 1                             </P>
-        <P> mass_ratio    = 7                            </P>
+        <P> mass_ratio    = 50                            </P>
         <P> damping       = 0                             </P>
         <P> Vr            = 8                             </P>
         <P> StructStiff   = PI*PI*PI*mass_ratio/(Vr*Vr)   </P>
@@ -68,7 +66,7 @@
             </REGION>
     </BOUNDARYCONDITIONS>
     <FUNCTION NAME="Baseflow">
-        <F VAR="u,v,p" FILE="Re33base.fld"/>
+        <F VAR="u,v,p" FILE="basefield.fld"/>
    </FUNCTION>
 
 <FUNCTION NAME="InitialConditions">
