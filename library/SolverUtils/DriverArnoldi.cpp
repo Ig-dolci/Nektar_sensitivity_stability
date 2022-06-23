@@ -55,6 +55,7 @@ DriverArnoldi::DriverArnoldi(
 
 int c01;
 Array<OneD, NekDouble> m_y1(2);
+NekDouble m_alpha0;
 /**
  * Destructor
  */
@@ -78,6 +79,8 @@ void DriverArnoldi::v_InitObject(ostream &out)
         m_period  = m_session->GetParameter("TimeStep")
                   * m_session->GetParameter("NumSteps");
         m_nfields = m_equ[0]->UpdateFields().size() - 1;
+        nq        = m_equ[0]->UpdateFields()[0]->GetNcoeffs();
+        n_tot     = (m_nfields+2)*nq;
 
     }
     else
@@ -113,6 +116,7 @@ void DriverArnoldi::v_InitObject(ostream &out)
 
     m_y1[0] = 0.;
     m_y1[1] = 0.;
+    m_alpha = 0.;
     // The imaginary shift is applied at system assembly
     // Only if using HOMOGENEOUS expansion and ModeType set to SingleMode
     if(m_imagShift != 0.0)
@@ -192,7 +196,9 @@ void DriverArnoldi::CopyArnoldiArrayToField(Array<OneD, NekDouble> &array)
         fields[k]->SetPhysState(false);
     }
     m_y1[0] = array[nq*m_nfields];
-    m_y1[1] = array[nq*m_nfields+1];
+    m_y1[1] = array[nq*(m_nfields+1)];
+    m_alpha0 = m_alpha;
+    cout << "disp0: "<< m_y1[0]<< ", vel0: " << m_y1[1] << endl;
 
 }
 
@@ -202,6 +208,7 @@ void DriverArnoldi::CopyArnoldiArrayToField(Array<OneD, NekDouble> &array)
  */
 void DriverArnoldi::CopyFieldToArnoldiArray(Array<OneD, NekDouble> &array)
 {
+    c01 = 0;
 
     Array<OneD, MultiRegions::ExpListSharedPtr> fields;
 
@@ -227,8 +234,14 @@ void DriverArnoldi::CopyFieldToArnoldiArray(Array<OneD, NekDouble> &array)
 
     }
     
-    array[m_nfields*nq]   = m_y1[0];
-    array[m_nfields*nq+1] = m_y1[1];    
+    // array[n_tot-2] = m_y1[0];
+    // array[n_tot-1] = m_y1[1];    
+    Array<OneD, NekDouble> tmp1(nq, m_y1[0]);
+    Array<OneD, NekDouble> tmp2(nq, m_y1[1]);
+    Vmath::Vcopy(nq, &tmp1[0], 1, &array[m_nfields*nq], 1);
+    Vmath::Vcopy(nq, &tmp2[0], 1, &array[(m_nfields+1)*nq], 1); 
+    cout << "disp:"<< m_y1[0]<< ", vel: " << m_y1[1] << endl;
+
       
     // Vmath::Zero(2, m_y1, 1);
 }
@@ -239,6 +252,7 @@ void DriverArnoldi::CopyFieldToArnoldiArray(Array<OneD, NekDouble> &array)
  */
 void DriverArnoldi::CopyFwdToAdj()
 {
+    c01=1;
     Array<OneD, MultiRegions::ExpListSharedPtr> fields;
 
     ASSERTL0(m_timeSteppingAlgorithm,
@@ -348,13 +362,19 @@ void DriverArnoldi::ReturnStructVector(NekDouble & y, NekDouble& y1, int& c)
 {
     y  = m_y1[0];
     y1 = m_y1[1];
-    c  = 0;
+    c  = c01;
 }
 
 void DriverArnoldi::GetStructVector(NekDouble y, NekDouble y1)
 {
     m_y1[0] = y;
     m_y1[1] = y1;
+}
+
+void DriverArnoldi::Getalpha(NekDouble &alpha)
+{
+    alpha = m_alpha0;
+
 }
 }
 }

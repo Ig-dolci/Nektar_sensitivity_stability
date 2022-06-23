@@ -109,8 +109,8 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
 {
     int i               = 0;
     int j               = 0;
-    int nq              = m_equ[0]->UpdateFields()[0]->GetNcoeffs();
-    int ntot            = m_nfields*nq + 2;
+    // int nq              = m_equ[0]->UpdateFields()[0]->GetNcoeffs();
+    int ntot            = n_tot;
     int converged       = 0;
     NekDouble resnorm   = 0.0;
     ofstream evlout;
@@ -172,6 +172,7 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
     alpha[0] = Blas::Ddot(ntot, &Kseq[0][0], 1, &Kseq[0][0], 1);
     m_comm->AllReduce(alpha[0], Nektar::LibUtilities::ReduceSum);
     alpha[0] = std::sqrt(alpha[0]);
+    m_alpha = alpha[0];
     Vmath::Smul(ntot, 1.0/alpha[0], Kseq[0], 1, Kseq[0], 1);
     
     // Fill initial krylov sequence
@@ -189,7 +190,7 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
         alpha[i] = Blas::Ddot(ntot, &Kseq[i][0], 1, &Kseq[i][0], 1);
         m_comm->AllReduce(alpha[i], Nektar::LibUtilities::ReduceSum);
         alpha[i] = std::sqrt(alpha[i]);
-        
+        m_alpha = alpha[i];
         //alpha[i] = std::sqrt(alpha[i]);
         Vmath::Smul(ntot, 1.0/alpha[i], Kseq[i], 1, Kseq[i], 1);
         
@@ -246,6 +247,7 @@ void DriverModifiedArnoldi::v_Execute(ostream &out)
             
             m_comm->AllReduce(alpha[m_kdim], Nektar::LibUtilities::ReduceSum);
             alpha[m_kdim] = std::sqrt(alpha[m_kdim]);
+            m_alpha = alpha[m_kdim];
             Vmath::Smul(ntot, 1.0/alpha[m_kdim], Kseq[m_kdim], 1,
                                                  Kseq[m_kdim], 1);
 
@@ -554,7 +556,8 @@ void DriverModifiedArnoldi::EV_post(
                 WriteEvs(cout, j, wr[j], wi[j]);
             }
             WriteFld(file,Kseq[j]);
-      
+            cout << "final disp:" << Kseq[j][nq*m_nfields] << "final vel: " << Kseq[j][nq*(m_nfields+1)] << endl;
+  
         }
         
     }

@@ -15,9 +15,9 @@
         </SOLVERINFO>
 
         <PARAMETERS>
-            <P> TimeStep = 0.005                             </P>
+            <P> TimeStep = 0.003                             </P>
             <P> NumSteps = 400/TimeStep                     </P>
-            <P> IO_CheckSteps = NumSteps                     </P>
+            <P> IO_CheckSteps = NumSteps/4                     </P>
             <P> IO_InfoSteps = 10000                         </P>
             <P> Re = 33                                      </P>
             <P> Kinvis = 1.0/Re                              </P>

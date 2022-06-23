@@ -13,7 +13,7 @@
           <I PROPERTY="Projection" VALUE="Galerkin" />
           <I PROPERTY="TimeIntegrationMethod" VALUE="IMEXOrder2" />
           <I PROPERTY="VibrationType" VALUE="Constrained"/>
-          <I PROPERTY="Driver" VALUE="ModifiedArnoldi" />
+          <I PROPERTY="Driver" VALUE="Arpack" />
           <I PROPERTY="ODESolver" VALUE="Newmark" />
         </SOLVERINFO>
 

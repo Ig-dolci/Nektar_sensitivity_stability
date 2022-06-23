@@ -49,7 +49,7 @@ public:
     friend class MemoryManager<DriverArnoldi>;
     static void ReturnStructVector(NekDouble& y, NekDouble& y1, int& c);
     static void GetStructVector(NekDouble y, NekDouble y1);
-
+    static void Getalpha(NekDouble& alpha);
     SOLVER_UTILS_EXPORT void ArnoldiSummary(std::ostream &out);
 
 protected:
@@ -63,8 +63,11 @@ protected:
     int       m_infosteps; /// interval to dump information if required.
 
     int       m_nfields;
+    int       n_tot;
+    int       nq;
     NekDouble m_realShift;
     NekDouble m_imagShift;
+    NekDouble m_alpha;
     int       m_negatedOp;   /// Operator in solve call is negated
 
     Array<OneD, NekDouble> m_real_evl;

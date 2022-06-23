@@ -57,6 +57,7 @@ NekDouble ForcingMovingBody::AdamsMoulton_coeffs[3][3] = {
 
 int comp;
 int c;
+NekDouble y, y1, y_dagger, y1_dagger;
 ForcingMovingBody::ForcingMovingBody(
                 const LibUtilities::SessionReaderSharedPtr         &pSession,
                 const std::weak_ptr<SolverUtils::EquationSystem> &pEquation)
@@ -174,21 +175,42 @@ void ForcingMovingBody::v_Apply(
         const NekDouble&                                    time)
 {
     
-    NekDouble aux0, aux1;
+    NekDouble aux0, aux1, alpha;
     std::string evol_operator = m_session->GetSolverInfo("EvolutionOperator");
     SolverUtils::DriverArnoldi::ReturnStructVector(aux0, aux1, c);
+    SolverUtils::DriverArnoldi::Getalpha(alpha);
     std::string driver = m_session->GetSolverInfo("Driver");
     int       tot_step = m_session->GetParameter("NumSteps");
 
     int num_step = time/m_timestep;
-    if((c==0 && time==0 && boost::iequals(driver, "ModifiedArnoldi")) ||
-     (c==0 &&  (num_step)%(tot_step)==0 && boost::iequals(driver, "Arpack")))
+    if(time==0)
     {
+        if (comp==0)
+        {
+            m_MotionVars[1][0] = 0.;
+            m_MotionVars[1][1] = 0.;
+            
+            cout << "displ: " << m_MotionVars[1][0] << ", vel: " << m_MotionVars[1][1] << endl;
+        }
+        else if(comp>0 && c==0){
+            
+            m_MotionVars[1][0] = aux0;
+            m_MotionVars[1][1] = aux1;
+            
+                   
+        }
+        else if(comp>0 && c==1){
+            m_MotionVars[1][0] = y_dagger;
+            m_MotionVars[1][1] = y1_dagger;
+            
+            cout << "displ adj: " << m_MotionVars[1][0] << ", vel adj: " << m_MotionVars[1][1] << endl;
         
-        m_MotionVars[1][0] = aux0;
-        m_MotionVars[1][1] = aux1;
-        
+        }
+        else{
+            cout << "get dir... " << "displ: " << m_MotionVars[1][0] << ", vel: " << m_MotionVars[1][1] << endl;
 
+        }
+        
     }
       
     // Update the forces from the calculation of fluid field, which is
@@ -197,7 +219,7 @@ void ForcingMovingBody::v_Apply(
     std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
     // Array<OneD, NekDouble> Hydroforces (2*m_np,0.0);
     // SolverUtils::FilterAeroForces::GetTotForces(Hydroforces);
-    if(boost::iequals(evol_operator, "Adjoint") && boost::iequals(ode_solver, "Newmark"))
+    if(boost::iequals(ode_solver, "Newmark") && (boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1)))
     {
         int cn;
         NekDouble dif, dif1, integral;
@@ -360,9 +382,25 @@ void ForcingMovingBody::v_Apply(
 
         
     }
-
+    if((boost::iequals(evol_operator, "TransientGrowth") && c==0))
+    {
+        // cout << "da0" << endl;
+        y_dagger  = m_MotionVars[1][0];
+        y1_dagger = m_MotionVars[1][1];
+        // SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]*m_structrho);
+    }
+    if((boost::iequals(evol_operator, "TransientGrowth") && c==1))
+    {
+        // cout << "da0" << endl;
+        y  = m_MotionVars[1][0];
+        y1 = m_MotionVars[1][1];
+        // SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]*m_structrho);
+    }
+    // else
+    // {
     SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]);
-    
+        // cout << "da1" << endl;
+    // }
 }
 
 
@@ -748,6 +786,11 @@ void ForcingMovingBody::StructureSolver(
 {
     std::string evol_operator = m_session->GetSolverInfo("EvolutionOperator");
     std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
+    int m_subSteps = 1;
+    static int intCalls = 0;
+    ++intCalls;
+    int order = min(intCalls, m_intSteps);
+
     // Array<OneD, NekDouble> Hydroforces (2*m_np,0.0);
     // SolverUtils::FilterAeroForces::GetTotForces(Hydroforces);
     if(boost::iequals(ode_solver, "Newmark"))
@@ -765,7 +808,7 @@ void ForcingMovingBody::StructureSolver(
             tmp0[var] = BodyMotions[var];
         }
     
-        tmp2[0] = m_Aeroforces[cn] + m_Aeroforces[cn + 2];
+        tmp2[0] = m_Aeroforces[cn];
         
         Blas::Dgemv('N', nrows, nrows, 1.0,
                     &(m_CoeffMat_B[0]->GetPtr())[0],
@@ -775,12 +818,23 @@ void ForcingMovingBody::StructureSolver(
                     &(m_CoeffMat_A[0]->GetPtr())[0],
                     nrows, &tmp2[0], 1,
                     1.0,   &tmp1[0], 1);
-
+        if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
+        {
+            m_displacement[0] = m_Aeroforces[cn] - m_structrho*tmp1[1];
+            if(time==0){
+                cout << "adj displ. " << m_displacement[0] << endl;
+            }
+            
+            // BodyMotions[0] = m_displacement[0];
+            // BodyMotions[1] = tmp1[1];
+        }
+        // else
+        // {
         for(int i = 0; i < BodyMotions.size(); i++)
         {
             BodyMotions[i] = tmp1[i];
         }
-        
+        // }
         // std::string solver_type = m_session->GetSolverInfo("SolverType");
     
     }
@@ -789,19 +843,12 @@ void ForcingMovingBody::StructureSolver(
 
         // Get correct time considering m_subSteps parameter
         // NekDouble   newTime = time;
-        int m_subSteps = 1;
-
 
 
         static int totalCalls = -1;
         ++totalCalls;
         if( !(totalCalls % m_subSteps) )
         {
-
-            // Determine order for this time step
-            static int intCalls = 0;
-            ++intCalls;
-            int order = min(intCalls, m_intSteps);
 
             int expdim = pFields[0]->GetGraph()->GetMeshDimension();
 
@@ -821,12 +868,12 @@ void ForcingMovingBody::StructureSolver(
             if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
             {
                 m_force[0][0] =  -m_Aeroforces[cn] -
-                        m_displacement[0] + m_structdamp * m_velocity[0][0];
+                        m_displacement[0] + m_structdamp * m_velocity[0][0]/m_structrho;
             }
             else
             {
-                m_force[0][0] = m_Aeroforces[cn] -
-                    m_structstiff * m_displacement[0] - m_structdamp * m_velocity[0][0];
+                m_force[0][0] = (m_Aeroforces[cn] -
+                    m_structstiff * m_displacement[0] - m_structdamp * m_velocity[0][0])/m_structrho;
 
             }
 
@@ -840,15 +887,12 @@ void ForcingMovingBody::StructureSolver(
                 m_velocity[n] = m_velocity[n-1];
             }
             m_velocity[0] = tmp;
-
-
-
         
             // Update velocity
             for(int j = 0; j < order; ++j)
             {
                 m_velocity[0][0] += m_subSteps * m_timestep *
-                    AdamsBashforth_coeffs[order-1][j] * m_force[j][0] / m_structrho;
+                    AdamsBashforth_coeffs[order-1][j] * m_force[j][0];
             }
             // Update position
             tmp = m_force1[m_intSteps-1];
@@ -861,7 +905,7 @@ void ForcingMovingBody::StructureSolver(
             if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
             {
                 m_force1[0][0] = -m_Aeroforces[4+cn] +
-                        m_velocity[0][0]*m_structstiff;
+                        m_velocity[0][0]*m_structstiff/m_structrho;
             }
             for(int j = 0; j < order; ++j)
             {
@@ -1338,6 +1382,16 @@ void ForcingMovingBody::MappingBndConditions(
                                                  tmp,                          1,
                                                  BndExp[n]->UpdatePhys(), 1);
                 }
+                if((boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1)) 
+                && (boost::iequals(driver, "ModifiedArnoldi") || boost::iequals(driver, "Arpack")))
+                {
+                    Vmath::Fill(nPts, m_MotionVars[dim][1]/m_structrho, tmp, 1);
+
+                    Vmath::Vsub(nPts, BndExp[n]->UpdatePhys(), 1,
+                                                 tmp,                          1,
+                                                 BndExp[n]->UpdatePhys(), 1);
+                }
+
                 else
                 {
 
