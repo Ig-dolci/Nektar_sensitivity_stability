@@ -80,7 +80,7 @@ void DriverArnoldi::v_InitObject(ostream &out)
                   * m_session->GetParameter("NumSteps");
         m_nfields = m_equ[0]->UpdateFields().size() - 1;
         nq        = m_equ[0]->UpdateFields()[0]->GetNcoeffs();
-        n_tot     = (m_nfields+2)*nq;
+        n_tot     = (m_nfields)*nq+2;
 
     }
     else
@@ -196,7 +196,7 @@ void DriverArnoldi::CopyArnoldiArrayToField(Array<OneD, NekDouble> &array)
         fields[k]->SetPhysState(false);
     }
     m_y1[0] = array[nq*m_nfields];
-    m_y1[1] = array[nq*(m_nfields+1)];
+    m_y1[1] = array[nq*m_nfields+1];
     m_alpha0 = m_alpha;
     cout << "disp0: "<< m_y1[0]<< ", vel0: " << m_y1[1] << endl;
 
@@ -239,7 +239,7 @@ void DriverArnoldi::CopyFieldToArnoldiArray(Array<OneD, NekDouble> &array)
     Array<OneD, NekDouble> tmp1(nq, m_y1[0]);
     Array<OneD, NekDouble> tmp2(nq, m_y1[1]);
     Vmath::Vcopy(nq, &tmp1[0], 1, &array[m_nfields*nq], 1);
-    Vmath::Vcopy(nq, &tmp2[0], 1, &array[(m_nfields+1)*nq], 1); 
+    Vmath::Vcopy(nq, &tmp2[0], 1, &array[m_nfields*nq+1], 1); 
     cout << "disp:"<< m_y1[0]<< ", vel: " << m_y1[1] << endl;
 
       

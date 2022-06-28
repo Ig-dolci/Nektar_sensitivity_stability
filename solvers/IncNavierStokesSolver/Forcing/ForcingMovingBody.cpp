@@ -194,8 +194,8 @@ void ForcingMovingBody::v_Apply(
         }
         else if(comp>0 && c==0){
             
-            m_MotionVars[1][0] = aux0;
-            m_MotionVars[1][1] = aux1;
+            m_MotionVars[1][0] = aux0/m_structrho;
+            m_MotionVars[1][1] = aux1/m_structrho;
             
                    
         }
