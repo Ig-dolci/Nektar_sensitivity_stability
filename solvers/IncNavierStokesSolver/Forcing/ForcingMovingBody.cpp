@@ -192,12 +192,13 @@ void ForcingMovingBody::v_Apply(
             
             cout << "displ: " << m_MotionVars[1][0] << ", vel: " << m_MotionVars[1][1] << endl;
         }
-        else if(comp>0 && c==0){
+        else if(comp>0 && c==0 && (boost::iequals(evol_operator, "TransientGrowth") )){
             
             m_MotionVars[1][0] = aux0/m_structrho;
             m_MotionVars[1][1] = aux1/m_structrho;
             
-                   
+            cout << "displ dir: " << m_MotionVars[1][0] << ", vel dir: " << m_MotionVars[1][1] << endl;
+      
         }
         else if(comp>0 && c==1){
             m_MotionVars[1][0] = y_dagger;
@@ -205,6 +206,14 @@ void ForcingMovingBody::v_Apply(
             
             cout << "displ adj: " << m_MotionVars[1][0] << ", vel adj: " << m_MotionVars[1][1] << endl;
         
+        }
+        else if(comp>0 && c==0){
+            
+            m_MotionVars[1][0] = aux0;
+            m_MotionVars[1][1] = aux1;
+            cout << "displ: " << m_MotionVars[1][0] << ", vel: " << m_MotionVars[1][1] << endl;
+      
+                   
         }
         else{
             cout << "get dir... " << "displ: " << m_MotionVars[1][0] << ", vel: " << m_MotionVars[1][1] << endl;
