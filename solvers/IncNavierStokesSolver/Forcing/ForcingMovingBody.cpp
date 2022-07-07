@@ -200,7 +200,7 @@ void ForcingMovingBody::v_Apply(
             cout << "displ dir: " << m_MotionVars[1][0] << ", vel dir: " << m_MotionVars[1][1] << endl;
       
         }
-        else if(comp>0 && c==1){
+        else if(comp>0 && c==1 && (boost::iequals(evol_operator, "TransientGrowth") )){
             m_MotionVars[1][0] = y_dagger;
             m_MotionVars[1][1] = y1_dagger;
             
@@ -228,7 +228,10 @@ void ForcingMovingBody::v_Apply(
     std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
     // Array<OneD, NekDouble> Hydroforces (2*m_np,0.0);
     // SolverUtils::FilterAeroForces::GetTotForces(Hydroforces);
-    if(boost::iequals(ode_solver, "Newmark") && (boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1)))
+    if(boost::iequals(ode_solver, "Newmark") && 
+      (boost::iequals(evol_operator, "Adjoint") 
+      || (boost::iequals(evol_operator, "TransientGrowth") 
+      && c==1)))
     {
         int cn;
         NekDouble dif, dif1, integral;
