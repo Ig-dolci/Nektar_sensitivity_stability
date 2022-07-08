@@ -234,12 +234,12 @@ void DriverArnoldi::CopyFieldToArnoldiArray(Array<OneD, NekDouble> &array)
 
     }
     
-    // array[n_tot-2] = m_y1[0];
-    // array[n_tot-1] = m_y1[1];    
-    Array<OneD, NekDouble> tmp1(nq, m_y1[0]);
-    Array<OneD, NekDouble> tmp2(nq, m_y1[1]);
-    Vmath::Vcopy(nq, &tmp1[0], 1, &array[m_nfields*nq], 1);
-    Vmath::Vcopy(nq, &tmp2[0], 1, &array[m_nfields*nq+1], 1); 
+    array[m_nfields*nq]   = m_y1[0];
+    array[m_nfields*nq+1] = m_y1[1];       
+    // Array<OneD, NekDouble> tmp1(nq, m_y1[0]);
+    // Array<OneD, NekDouble> tmp2(nq, m_y1[1]);
+    // Vmath::Vcopy(nq, &tmp1[0], 1, &array[m_nfields*nq], 1);
+    // Vmath::Vcopy(nq, &tmp2[0], 1, &array[m_nfields*nq+1], 1); 
     cout << "disp:"<< m_y1[0]<< ", vel: " << m_y1[1] << endl;
 
       
