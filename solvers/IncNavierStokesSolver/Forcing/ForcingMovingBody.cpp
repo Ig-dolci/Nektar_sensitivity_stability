@@ -820,7 +820,7 @@ void ForcingMovingBody::StructureSolver(
             tmp0[var] = BodyMotions[var];
         }
     
-        tmp2[0] = m_Aeroforces[cn];
+        tmp2[0] = HydroForces[0];
         
         Blas::Dgemv('N', nrows, nrows, 1.0,
                     &(m_CoeffMat_B[0]->GetPtr())[0],
@@ -832,7 +832,7 @@ void ForcingMovingBody::StructureSolver(
                     1.0,   &tmp1[0], 1);
         if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
         {
-            m_displacement[0] = m_Aeroforces[cn] - m_structrho*tmp1[1];
+            m_displacement[0] = HydroForces[cn] - m_structrho*tmp1[1];
             if(time==0){
                 cout << "adj displ. " << m_displacement[0] << endl;
             }
@@ -884,7 +884,7 @@ void ForcingMovingBody::StructureSolver(
             }
             else
             {
-                m_force[0][0] = (m_Aeroforces[cn] -
+                m_force[0][0] = (HydroForces[0] -
                     m_structstiff * m_displacement[0] - m_structdamp * m_velocity[0][0])/m_structrho;
 
             }
@@ -1372,7 +1372,8 @@ void ForcingMovingBody::MappingBndConditions(
                                         BndExp[n]->UpdatePhys());
 
                 if((boost::iequals(evol_operator, "Direct") || (boost::iequals(evol_operator, "TransientGrowth") && c==0)) 
-                && (boost::iequals(driver, "ModifiedArnoldi") || boost::iequals(driver, "Arpack")))
+                // && (boost::iequals(driver, "ModifiedArnoldi") || boost::iequals(driver, "Arpack"))
+                )
                 {
                 
                     m_baseflow[dim] = Array<OneD, NekDouble>(nPts, 0.0);
@@ -1394,8 +1395,10 @@ void ForcingMovingBody::MappingBndConditions(
                                                  tmp,                          1,
                                                  BndExp[n]->UpdatePhys(), 1);
                 }
-                if((boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1)) 
-                && (boost::iequals(driver, "ModifiedArnoldi") || boost::iequals(driver, "Arpack")))
+                else if((boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1)) 
+                // && (boost::iequals(driver, "ModifiedArnoldi") || boost::iequals(driver, "Arpack"))
+                
+                )
                 {
                     Vmath::Fill(nPts, m_MotionVars[dim][1]/m_structrho, tmp, 1);
 
