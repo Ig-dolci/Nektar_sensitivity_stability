@@ -57,7 +57,7 @@ NekDouble ForcingMovingBody::AdamsMoulton_coeffs[3][3] = {
 
 int comp;
 int c;
-NekDouble y, y1, y_dagger, y1_dagger;
+NekDouble y, y1, y2, y_dagger, y1_dagger;
 ForcingMovingBody::ForcingMovingBody(
                 const LibUtilities::SessionReaderSharedPtr         &pSession,
                 const std::weak_ptr<SolverUtils::EquationSystem> &pEquation)
@@ -181,7 +181,8 @@ void ForcingMovingBody::v_Apply(
     SolverUtils::DriverArnoldi::Getalpha(alpha);
     std::string driver = m_session->GetSolverInfo("Driver");
     int       tot_step = m_session->GetParameter("NumSteps");
-
+    std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
+    // cout << "disp: " << m_MotionVars[1][0] << " vel:" << m_MotionVars[1][1] << endl;
     int num_step = time/m_timestep;
     if(time==0)
     {
@@ -194,15 +195,23 @@ void ForcingMovingBody::v_Apply(
         }
         else if(comp>0 && c==0 && (boost::iequals(evol_operator, "TransientGrowth") )){
             
-            m_MotionVars[1][0] = aux0/m_structrho;
-            m_MotionVars[1][1] = aux1/m_structrho;
+            m_MotionVars[1][0] = aux0;
+            m_MotionVars[1][1] = aux1;
             
             cout << "displ dir: " << m_MotionVars[1][0] << ", vel dir: " << m_MotionVars[1][1] << endl;
       
         }
         else if(comp>0 && c==1 && (boost::iequals(evol_operator, "TransientGrowth") )){
-            m_MotionVars[1][0] = y_dagger;
-            m_MotionVars[1][1] = y1_dagger;
+            if(boost::iequals(ode_solver, "Newmark"))
+            {
+                m_MotionVars[1][0] = y1;
+                m_MotionVars[1][1] = y2;
+            } 
+            else{
+                m_MotionVars[1][0] = y;
+                m_MotionVars[1][1] = y1;
+            }
+            
             
             cout << "displ adj: " << m_MotionVars[1][0] << ", vel adj: " << m_MotionVars[1][1] << endl;
         
@@ -225,7 +234,7 @@ void ForcingMovingBody::v_Apply(
     // Update the forces from the calculation of fluid field, which is
     // implemented in the movingbody filter
     
-    std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
+    
     // Array<OneD, NekDouble> Hydroforces (2*m_np,0.0);
     // SolverUtils::FilterAeroForces::GetTotForces(Hydroforces);
     if(boost::iequals(ode_solver, "Newmark") && 
@@ -243,7 +252,7 @@ void ForcingMovingBody::v_Apply(
             forces_vel[0][0] =  m_Aeroforces[cn];
 
             dif = (3*forces_vel[0][0] - 4*forces_vel[1][0] + forces_vel[2][0])/(2.*m_timestep);
-            m_Aeroforces[cn] = - dif + m_Aeroforces[4+cn];
+            m_Aeroforces[cn] = (- dif + m_Aeroforces[4+cn])*m_structrho;
 
             
         }
@@ -394,25 +403,35 @@ void ForcingMovingBody::v_Apply(
 
         
     }
-    if((boost::iequals(evol_operator, "TransientGrowth") && c==0))
-    {
-        // cout << "da0" << endl;
-        y_dagger  = m_MotionVars[1][0];
-        y1_dagger = m_MotionVars[1][1];
-        // SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]*m_structrho);
-    }
+
+
     if((boost::iequals(evol_operator, "TransientGrowth") && c==1))
     {
-        // cout << "da0" << endl;
+       
+        if(boost::iequals(ode_solver, "Newmark"))  
+        {
+            y1_dagger = m_MotionVars[1][0];
+            
+        }
+        else
+        {
+            y_dagger  = m_MotionVars[1][0];
+            y1_dagger = m_MotionVars[1][1];
+        }
+
+        SolverUtils::DriverArnoldi::GetStructVector(y_dagger, y1_dagger);
+        
+    }
+    else
+    {
+        
         y  = m_MotionVars[1][0];
         y1 = m_MotionVars[1][1];
-        // SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]*m_structrho);
+        y2 = m_MotionVars[1][2];
+        SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]);
     }
-    // else
-    // {
-    SolverUtils::DriverArnoldi::GetStructVector(m_MotionVars[1][0], m_MotionVars[1][1]);
-        // cout << "da1" << endl;
-    // }
+
+
 }
 
 
@@ -548,7 +567,8 @@ void ForcingMovingBody::v_Apply(
         bool fictmass;
         m_session->MatchSolverInfo("FictitiousMassMethod", "True",
                                     fictmass, false);
-        if(fictmass)
+        if(fictmass && (boost::iequals(evol_operator, "Direct") 
+                ||  boost::iequals(evol_operator, "Nonlinear")))
         {
             NekDouble fictrho, fictdamp;
             m_session->LoadParameter("FictMass", fictrho);
@@ -832,13 +852,11 @@ void ForcingMovingBody::StructureSolver(
                     1.0,   &tmp1[0], 1);
         if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
         {
-            m_displacement[0] = HydroForces[cn] - m_structrho*tmp1[1];
-            if(time==0){
-                cout << "adj displ. " << m_displacement[0] << endl;
-            }
+            y_dagger = HydroForces[cn] - tmp1[1];
+            // if(time==0){
+            //     cout << "adj displ. " << y_dagger << endl;
+            // }
             
-            // BodyMotions[0] = m_displacement[0];
-            // BodyMotions[1] = tmp1[1];
         }
         // else
         // {
@@ -879,7 +897,7 @@ void ForcingMovingBody::StructureSolver(
             m_velocity[0][0]  = BodyMotions[1];
             if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
             {
-                m_force[0][0] =  -m_Aeroforces[cn] -
+                m_force[0][0] =  -HydroForces[0] -
                         m_displacement[0] + m_structdamp * m_velocity[0][0]/m_structrho;
             }
             else
@@ -1321,7 +1339,8 @@ void ForcingMovingBody::MappingBndConditions(
 
 
     std::string evol_operator = m_session->GetSolverInfo("EvolutionOperator");
-    std::string driver = m_session->GetSolverInfo("Driver");
+    std::string driver        = m_session->GetSolverInfo("Driver");
+    std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
     // Declare variables
     Array<OneD, MultiRegions::ExpListSharedPtr> BndExp;
     Array<OneD, const SpatialDomains::BoundaryConditionShPtr> BndConds;
@@ -1400,11 +1419,18 @@ void ForcingMovingBody::MappingBndConditions(
                 
                 )
                 {
-                    Vmath::Fill(nPts, m_MotionVars[dim][1]/m_structrho, tmp, 1);
+                    if(boost::iequals(ode_solver, "Newmark"))
+                    {
+                        Vmath::Fill(nPts, m_MotionVars[dim][0]/m_structrho, tmp, 1);
+                    }
+                    else
+                    {
+                        Vmath::Fill(nPts, m_MotionVars[dim][1]/m_structrho, tmp, 1);
+                    }
 
                     Vmath::Vsub(nPts, BndExp[n]->UpdatePhys(), 1,
-                                                 tmp,                          1,
-                                                 BndExp[n]->UpdatePhys(), 1);
+                                                tmp,                          1,
+                                                BndExp[n]->UpdatePhys(), 1);
                 }
 
                 else
