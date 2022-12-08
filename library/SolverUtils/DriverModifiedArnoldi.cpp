@@ -556,7 +556,7 @@ void DriverModifiedArnoldi::EV_post(
                 WriteEvs(cout, j, wr[j], wi[j]);
             }
             WriteFld(file,Kseq[j]);
-            cout << "final disp:" << Kseq[j][nq*m_nfields] << "final vel: " << Kseq[j][nq*m_nfields+1] << endl;
+            cout << "final disp:" << Kseq[j][ntot-2] << "final vel: " << Kseq[j][ntot-1] << endl;
   
         }
         

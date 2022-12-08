@@ -57,7 +57,7 @@ NekDouble ForcingMovingBody::AdamsMoulton_coeffs[3][3] = {
 
 int comp;
 int c;
-NekDouble y, y1, y2, y_dagger, y1_dagger;
+NekDouble y, y1, y2, y_dagger, y1_dagger, mass_ratio, damp;
 ForcingMovingBody::ForcingMovingBody(
                 const LibUtilities::SessionReaderSharedPtr         &pSession,
                 const std::weak_ptr<SolverUtils::EquationSystem> &pEquation)
@@ -90,6 +90,7 @@ void ForcingMovingBody::v_InitObject(
     // Initialise the cable model
 
     InitialiseCableModel(m_session, pFields);
+   
     int phystot = pFields[0]->GetTotPoints();
     if(boost::iequals(solver_type, "VCSMapping"))
     {
@@ -182,6 +183,7 @@ void ForcingMovingBody::v_Apply(
     std::string driver = m_session->GetSolverInfo("Driver");
     int       tot_step = m_session->GetParameter("NumSteps");
     std::string ode_solver    = m_session->GetSolverInfo("ODESolver");
+    m_MovBodyfilter->UpdateForce(m_session, pFields, m_Aeroforces, time);
     // cout << "disp: " << m_MotionVars[1][0] << " vel:" << m_MotionVars[1][1] << endl;
     int num_step = time/m_timestep;
     if(time==0)
@@ -196,7 +198,7 @@ void ForcingMovingBody::v_Apply(
         else if(comp>0 && c==0 && (boost::iequals(evol_operator, "TransientGrowth") )){
             
             m_MotionVars[1][0] = aux0;
-            m_MotionVars[1][1] = aux1;
+            m_MotionVars[1][1] = aux1*mass_ratio;
             
             cout << "displ dir: " << m_MotionVars[1][0] << ", vel dir: " << m_MotionVars[1][1] << endl;
       
@@ -244,7 +246,7 @@ void ForcingMovingBody::v_Apply(
     {
         int cn;
         NekDouble dif, dif1, integral;
-        m_MovBodyfilter->UpdateForce(m_session, pFields, m_Aeroforces, time);
+        
         for(int n = 0, cn = 1; n < m_vdim; n++, cn--)
         {           
             RollOver(forces_vel);
@@ -256,13 +258,6 @@ void ForcingMovingBody::v_Apply(
 
             
         }
-        
-    }
-    else
-    {
-        
-        m_MovBodyfilter->UpdateForce(m_session, pFields, m_Aeroforces, time);
-        
     }
    
     
@@ -416,7 +411,7 @@ void ForcingMovingBody::v_Apply(
         else
         {
             y_dagger  = m_MotionVars[1][0];
-            y1_dagger = m_MotionVars[1][1];
+            y1_dagger = m_MotionVars[1][1]/mass_ratio;
         }
 
         SolverUtils::DriverArnoldi::GetStructVector(y_dagger, y1_dagger);
@@ -567,8 +562,9 @@ void ForcingMovingBody::v_Apply(
         bool fictmass;
         m_session->MatchSolverInfo("FictitiousMassMethod", "True",
                                     fictmass, false);
-        if(fictmass && (boost::iequals(evol_operator, "Direct") 
-                ||  boost::iequals(evol_operator, "Nonlinear")))
+        if(fictmass)
+        //  && (boost::iequals(evol_operator, "Direct") 
+        //         ||  boost::iequals(evol_operator, "Nonlinear")))
         {
             NekDouble fictrho, fictdamp;
             m_session->LoadParameter("FictMass", fictrho);
@@ -618,8 +614,15 @@ void ForcingMovingBody::v_Apply(
                 // Add the fictitious forces on the RHS of the equation
                 Vmath::Svtvp(npts, fictdamp,m_fV[i][nlevels-1],1,
                             fces[i],1,fces[i],1);
-                Vmath::Svtvp(npts, fictrho, m_fA[i][nlevels-1],1,
-                            fces[i],1,fces[i],1);
+                if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
+                {
+                    Vmath::Svtvp(npts, -fictrho, m_fA[i][nlevels-1],1,
+                                fces[i],1,fces[i],1);
+                }
+                else{
+                    Vmath::Svtvp(npts, fictrho, m_fA[i][nlevels-1],1,
+                                fces[i],1,fces[i],1);
+                }
             }
         }
         
@@ -897,8 +900,8 @@ void ForcingMovingBody::StructureSolver(
             m_velocity[0][0]  = BodyMotions[1];
             if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
             {
-                m_force[0][0] =  -HydroForces[0] -
-                        m_displacement[0] + m_structdamp * m_velocity[0][0]/m_structrho;
+                m_force[0][0] =  (-HydroForces[0] -
+                        m_displacement[0] + m_structdamp * m_velocity[0][0])/m_structrho;
             }
             else
             {
@@ -935,7 +938,7 @@ void ForcingMovingBody::StructureSolver(
             if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
             {
                 m_force1[0][0] = -m_Aeroforces[4+cn] +
-                        m_velocity[0][0]*m_structstiff/m_structrho;
+                                  m_velocity[0][0]*m_structstiff;
             }
             for(int j = 0; j < order; ++j)
             {
@@ -951,10 +954,20 @@ void ForcingMovingBody::StructureSolver(
                 }
             }
         
-            BodyMotions[0] = m_displacement[0];
-            BodyMotions[1] = m_velocity[0][0];
-            BodyMotions[2] = (m_Aeroforces[cn] - m_structstiff * BodyMotions[0] - m_structdamp * BodyMotions[1])/m_structrho;
-
+             if(boost::iequals(evol_operator, "Adjoint") || (boost::iequals(evol_operator, "TransientGrowth") && c==1))
+            {
+                
+                BodyMotions[0] = m_displacement[0];
+                BodyMotions[1] = m_velocity[0][0];
+                BodyMotions[2] = (-HydroForces[0] - BodyMotions[0] + m_structdamp * BodyMotions[1])/m_structrho;
+                
+            }
+            else
+            {
+                BodyMotions[0] = m_displacement[0];
+                BodyMotions[1] = m_velocity[0][0];
+                BodyMotions[2] = (HydroForces[0] - m_structstiff * BodyMotions[0] - m_structdamp * BodyMotions[1])/m_structrho;
+            }
     }
 
     }
@@ -1075,7 +1088,12 @@ void ForcingMovingBody::InitialiseCableModel(
     bool fictmass;
     m_session->MatchSolverInfo("FictitiousMassMethod", "True",
                                 fictmass, false);
-    if(fictmass)
+    mass_ratio = m_structrho;
+    damp       = m_structdamp;
+  
+    if(fictmass )
+    // && (boost::iequals(evol_operator, "Direct") 
+    //  /           ||  boost::iequals(evol_operator, "Nonlinear")))
     {
         NekDouble fictrho, fictdamp;
         m_session->LoadParameter("FictMass", fictrho);
@@ -1421,11 +1439,12 @@ void ForcingMovingBody::MappingBndConditions(
                 {
                     if(boost::iequals(ode_solver, "Newmark"))
                     {
-                        Vmath::Fill(nPts, m_MotionVars[dim][0]/m_structrho, tmp, 1);
+                        Vmath::Fill(nPts, m_MotionVars[dim][0], tmp, 1);
                     }
                     else
                     {
-                        Vmath::Fill(nPts, m_MotionVars[dim][1]/m_structrho, tmp, 1);
+                        
+                        Vmath::Fill(nPts, m_MotionVars[dim][1], tmp, 1);
                     }
 
                     Vmath::Vsub(nPts, BndExp[n]->UpdatePhys(), 1,
