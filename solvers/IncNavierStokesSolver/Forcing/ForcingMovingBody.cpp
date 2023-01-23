@@ -198,7 +198,7 @@ void ForcingMovingBody::v_Apply(
         else if(comp>0 && c==0 && (boost::iequals(evol_operator, "TransientGrowth") )){
             
             m_MotionVars[1][0] = aux0;
-            m_MotionVars[1][1] = aux1*mass_ratio;
+            m_MotionVars[1][1] = aux1;
             
             cout << "displ dir: " << m_MotionVars[1][0] << ", vel dir: " << m_MotionVars[1][1] << endl;
       
@@ -211,7 +211,7 @@ void ForcingMovingBody::v_Apply(
             } 
             else{
                 m_MotionVars[1][0] = y;
-                m_MotionVars[1][1] = y1;
+                m_MotionVars[1][1] = y1/m_structrho;
             }
             
             
@@ -411,7 +411,7 @@ void ForcingMovingBody::v_Apply(
         else
         {
             y_dagger  = m_MotionVars[1][0];
-            y1_dagger = m_MotionVars[1][1]/mass_ratio;
+            y1_dagger = m_MotionVars[1][1];
         }
 
         SolverUtils::DriverArnoldi::GetStructVector(y_dagger, y1_dagger);
